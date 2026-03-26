@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bus Tracker</title>
+</head>
+
+<body style="text-align:center;font-family:Arial;margin-top:50px">
+
+<h2>🚌 Bus Tracking (Secure)</h2>
+<button onclick="start()" style="font-size:20px;padding:12px">Share Location</button>
+<p id="s">Waiting...</p>
+
+<script>
+function start(){
+  navigator.geolocation.getCurrentPosition(send,err,{
+    enableHighAccuracy:true
+  });
+}
+
+function send(pos){
+  let lat = pos.coords.latitude;
+  let lon = pos.coords.longitude;
+
+  document.getElementById("s").innerHTML =
+    "Sharing: "+lat+", "+lon;
+
+  fetch("http://192.168.4.1/update?lat="+lat+"&lon="+lon)
+    .then(()=>console.log("sent"))
+    .catch(()=>console.log("failed"));
+}
+
+function err(){
+  document.getElementById("s").innerHTML =
+    "Permission denied";
+}
+</script>
+
+</body>
+</html>
