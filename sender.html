@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bus Tracker Sender</title>
+</head>
+
+<body style="text-align:center;font-family:Arial;margin-top:50px">
+<h2>🚌 Share Bus Location</h2>
+<button onclick="start()" style="font-size:18px;padding:10px">Start Sharing</button>
+<p id="s">Waiting...</p>
+
+<script>
+const DB = "https://bustracker-5c177-default-rtdb.asia-southeast1.firebasedatabase.app/location.json";
+
+function start(){
+ navigator.geolocation.watchPosition(send,err,{
+  enableHighAccuracy:true,
+  maximumAge:0,
+  timeout:5000
+ });
+}
+
+function send(pos){
+ let lat = pos.coords.latitude;
+ let lon = pos.coords.longitude;
+
+ document.getElementById("s").innerHTML =
+ "Sharing: " + lat + " , " + lon;
+
+ fetch(DB,{
+  method:"PUT",
+  headers:{"Content-Type":"application/json"},
+  body: JSON.stringify({
+    lat:lat,
+    lon:lon,
+    time:Date.now()
+  })
+ });
+}
+
+function err(){
+ document.getElementById("s").innerHTML =
+ "❌ GPS Permission Denied";
+}
+</script>
+
+</body>
+</html>
