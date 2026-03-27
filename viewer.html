@@ -2,7 +2,6 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-
 <title>Multi Bus Tracker</title>
 
 <link rel="stylesheet"
@@ -28,7 +27,8 @@ body{margin:0;font-family:Arial}
 <option value="bus3">Bus 3</option>
 </select>
 
-<span id="eta" style="margin-left:20px;font-weight:bold"></span>
+<span id="eta" style="margin-left:20px"></span>
+<span id="speed" style="margin-left:20px"></span>
 
 </div>
 
@@ -39,7 +39,15 @@ body{margin:0;font-family:Arial}
 const BASE =
 "https://bustracker-5c177-default-rtdb.asia-southeast1.firebasedatabase.app/";
 
-const SCHOOL = [13.0827,80.2707]; // change destination (school)
+// SCHOOL DESTINATION
+const SCHOOL = [13.0827,80.2707];
+
+// BUS STOPS (EDIT THESE)
+const STOPS = [
+ {name:"Stop 1", coords:[13.0700,80.2500]},
+ {name:"Stop 2", coords:[13.0750,80.2600]},
+ {name:"Stop 3", coords:[13.0800,80.2650]}
+];
 
 const map = L.map('map').setView(SCHOOL,13);
 
@@ -47,6 +55,7 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
  maxZoom:19
 }).addTo(map);
 
+// bus icon
 const busIcon = L.icon({
  iconUrl:'https://cdn-icons-png.flaticon.com/512/61/61231.png',
  iconSize:[40,40]
@@ -54,9 +63,17 @@ const busIcon = L.icon({
 
 let marker;
 let routeLine;
+let lastPos;
+let lastTime;
 
-L.marker(SCHOOL).addTo(map)
-.bindPopup("🏫 Destination");
+// school marker
+L.marker(SCHOOL).addTo(map).bindPopup("🏫 School");
+
+// stops markers
+STOPS.forEach(stop=>{
+ L.marker(stop.coords).addTo(map)
+ .bindPopup("🛑 " + stop.name);
+});
 
 function update(){
 
@@ -71,66 +88,83 @@ function update(){
   let lat = d.lat;
   let lon = d.lon;
 
+  // moving marker
   if(!marker){
    marker = L.marker([lat,lon],{icon:busIcon}).addTo(map);
   }else{
    marker.setLatLng([lat,lon]);
   }
 
-  // draw route line
-  if(routeLine){
-   map.removeLayer(routeLine);
+  // speed calculation
+  if(lastPos){
+   let dist = map.distance(lastPos,[lat,lon]) / 1000;
+   let time = (Date.now()-lastTime)/3600000;
+   let speed = dist/time;
+
+   document.getElementById("speed").innerHTML =
+   "Speed: " + speed.toFixed(1) + " km/h";
   }
 
-  routeLine = L.polyline([
-   [lat,lon],
-   SCHOOL
-  ],{
-   color:'green',
-   weight:4
-  }).addTo(map);
+  lastPos = [lat,lon];
+  lastTime = Date.now();
 
-  // ETA calculation
-  let dist = distance(lat,lon,SCHOOL[0],SCHOOL[1]);
-  let speed = 30; // km/h average bus speed
-  let eta = (dist/speed)*60;
+  // route via OSRM
+  fetch(`https://router.project-osrm.org/route/v1/driving/${lon},${lat};${SCHOOL[1]},${SCHOOL[0]}?overview=full&geometries=geojson`)
+  .then(r=>r.json())
+  .then(route=>{
 
-  document.getElementById("eta").innerHTML =
-  "ETA: " + eta.toFixed(1) + " min";
+   let coords = route.routes[0].geometry.coordinates;
 
-  // arrival alert
-  if(dist < 0.2){
-   alert("🚌 Bus Arriving!");
-  }
+   let latlngs = coords.map(c=>[c[1],c[0]]);
+
+   if(routeLine){
+    map.removeLayer(routeLine);
+   }
+
+   routeLine = L.polyline(latlngs,{
+    color:'green',
+    weight:4
+   }).addTo(map);
+
+   // ETA school
+   let eta = route.routes[0].duration / 60;
+
+   document.getElementById("eta").innerHTML =
+   "School ETA: " + eta.toFixed(1) + " min";
+
+   // arrival school alert
+   let dist = route.routes[0].distance / 1000;
+   if(dist < 0.3){
+    alert("🚌 Bus Arriving at School!");
+   }
+
+  });
+
+  // stops ETA
+  STOPS.forEach(stop=>{
+
+   fetch(`https://router.project-osrm.org/route/v1/driving/${lon},${lat};${stop.coords[1]},${stop.coords[0]}?overview=false`)
+   .then(r=>r.json())
+   .then(res=>{
+
+    let eta = res.routes[0].duration/60;
+    let dist = res.routes[0].distance/1000;
+
+    // arrival alert
+    if(dist < 0.2){
+     alert("🛑 Arriving at " + stop.name);
+    }
+
+   });
+
+  });
 
  });
 
 }
 
-setInterval(update,3000);
+setInterval(update,5000);
 update();
-
-
-// distance formula (Haversine)
-function distance(lat1, lon1, lat2, lon2){
-
- let R = 6371;
-
- let dLat = (lat2-lat1)*Math.PI/180;
- let dLon = (lon2-lon1)*Math.PI/180;
-
- let a =
- Math.sin(dLat/2) * Math.sin(dLat/2) +
- Math.cos(lat1*Math.PI/180) *
- Math.cos(lat2*Math.PI/180) *
- Math.sin(dLon/2) *
- Math.sin(dLon/2);
-
- let c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-
- return R * c;
-
-}
 
 </script>
 
