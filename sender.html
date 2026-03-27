@@ -1,21 +1,75 @@
-<script>
-const urlParams = new URLSearchParams(window.location.search);
-const BUS = urlParams.get("bus") || "unknown";
+<!DOCTYPE html>
 
-const DB="https://bustracker-5c177-default-rtdb.asia-southeast1.firebasedatabase.app/"+BUS+".json";
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bus Tracker Sender</title>
+</head>
+
+<body style="text-align:center;font-family:Arial;margin-top:50px">
+
+<h2>🚌 Bus Location Sender</h2>
+
+<button onclick="start()" style="font-size:18px;padding:12px">
+Start Sharing
+</button>
+
+<p id="status">Waiting...</p>
+
+<script>
+
+// Get Bus ID from ESP8266 redirect URL
+const params = new URLSearchParams(window.location.search);
+const BUS_ID = params.get("bus") || "unknown";
+
+// Firebase database URL
+const DB = "https://bustracker-5c177-default-rtdb.asia-southeast1.firebasedatabase.app/" 
+           + BUS_ID + ".json";
 
 function start(){
- navigator.geolocation.watchPosition(send);
+ document.getElementById("status").innerHTML =
+ "Requesting GPS permission...";
+
+ if(navigator.geolocation){
+  navigator.geolocation.watchPosition(sendLocation, error, {
+   enableHighAccuracy:true,
+   maximumAge:0,
+   timeout:5000
+  });
+ }else{
+  document.getElementById("status").innerHTML =
+  "Geolocation not supported";
+ }
 }
 
-function send(pos){
- let lat=pos.coords.latitude;
- let lon=pos.coords.longitude;
+function sendLocation(position){
+ let lat = position.coords.latitude;
+ let lon = position.coords.longitude;
+
+ document.getElementById("status").innerHTML =
+ "Bus: " + BUS_ID + "<br>" +
+ "Latitude: " + lat + "<br>" +
+ "Longitude: " + lon;
 
  fetch(DB,{
   method:"PUT",
-  headers:{"Content-Type":"application/json"},
-  body:JSON.stringify({lat:lat,lon:lon})
+  headers:{
+   "Content-Type":"application/json"
+  },
+  body: JSON.stringify({
+   lat: lat,
+   lon: lon,
+   time: Date.now()
+  })
  });
 }
+
+function error(){
+ document.getElementById("status").innerHTML =
+ "❌ GPS Permission denied";
+}
+
 </script>
+
+</body>
+</html>
