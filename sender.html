@@ -1,9 +1,8 @@
 <!DOCTYPE html>
-
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Bus Tracker Sender</title>
+<title>Bus Location Sender</title>
 </head>
 
 <body style="text-align:center;font-family:Arial;margin-top:50px">
@@ -18,31 +17,34 @@ Start Sharing
 
 <script>
 
-// Get Bus ID from ESP8266 redirect URL
 const params = new URLSearchParams(window.location.search);
-const BUS_ID = params.get("bus") || "unknown";
+const BUS_ID = params.get("bus") || "bus1";
 
-// Firebase database URL
 const DB = "https://bustracker-5c177-default-rtdb.asia-southeast1.firebasedatabase.app/" 
            + BUS_ID + ".json";
 
 function start(){
+
  document.getElementById("status").innerHTML =
  "Requesting GPS permission...";
 
  if(navigator.geolocation){
+
   navigator.geolocation.watchPosition(sendLocation, error, {
    enableHighAccuracy:true,
    maximumAge:0,
    timeout:5000
   });
+
  }else{
   document.getElementById("status").innerHTML =
   "Geolocation not supported";
  }
+
 }
 
 function sendLocation(position){
+
  let lat = position.coords.latitude;
  let lon = position.coords.longitude;
 
@@ -62,6 +64,7 @@ function sendLocation(position){
    time: Date.now()
   })
  });
+
 }
 
 function error(){
