@@ -39,10 +39,8 @@ body{margin:0;font-family:Arial}
 const BASE =
 "https://bustracker-5c177-default-rtdb.asia-southeast1.firebasedatabase.app/";
 
-// SCHOOL DESTINATION
 const SCHOOL = [13.0827,80.2707];
 
-// BUS STOPS (EDIT THESE)
 const STOPS = [
  {name:"Stop 1", coords:[13.0700,80.2500]},
  {name:"Stop 2", coords:[13.0750,80.2600]},
@@ -55,10 +53,19 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
  maxZoom:19
 }).addTo(map);
 
-// bus icon
+
+// DEFAULT BUS ICON
 const busIcon = L.icon({
  iconUrl:'https://cdn-icons-png.flaticon.com/512/61/61231.png',
- iconSize:[40,40]
+ iconSize:[35,35],
+ iconAnchor:[17,35]
+});
+
+// BUS1 CUSTOM ICON (YOUR GITHUB PIN)
+const bus1Icon = L.icon({
+ iconUrl:'https://raw.githubusercontent.com/riknesh05/bus-tracker/main/pin.png',
+ iconSize:[45,45],
+ iconAnchor:[22,45]
 });
 
 let marker;
@@ -66,14 +73,13 @@ let routeLine;
 let lastPos;
 let lastTime;
 
-// school marker
 L.marker(SCHOOL).addTo(map).bindPopup("🏫 School");
 
-// stops markers
 STOPS.forEach(stop=>{
  L.marker(stop.coords).addTo(map)
  .bindPopup("🛑 " + stop.name);
 });
+
 
 function update(){
 
@@ -88,14 +94,17 @@ function update(){
   let lat = d.lat;
   let lon = d.lon;
 
-  // moving marker
+  // choose icon
+  let icon = (bus === "bus1") ? bus1Icon : busIcon;
+
   if(!marker){
-   marker = L.marker([lat,lon],{icon:busIcon}).addTo(map);
+   marker = L.marker([lat,lon],{icon:icon}).addTo(map);
   }else{
    marker.setLatLng([lat,lon]);
+   marker.setIcon(icon);
   }
 
-  // speed calculation
+  // speed
   if(lastPos){
    let dist = map.distance(lastPos,[lat,lon]) / 1000;
    let time = (Date.now()-lastTime)/3600000;
@@ -108,7 +117,8 @@ function update(){
   lastPos = [lat,lon];
   lastTime = Date.now();
 
-  // route via OSRM
+
+  // real route
   fetch(`https://router.project-osrm.org/route/v1/driving/${lon},${lat};${SCHOOL[1]},${SCHOOL[0]}?overview=full&geometries=geojson`)
   .then(r=>r.json())
   .then(route=>{
@@ -126,36 +136,10 @@ function update(){
     weight:4
    }).addTo(map);
 
-   // ETA school
    let eta = route.routes[0].duration / 60;
 
    document.getElementById("eta").innerHTML =
-   "School ETA: " + eta.toFixed(1) + " min";
-
-   // arrival school alert
-   let dist = route.routes[0].distance / 1000;
-   if(dist < 0.3){
-    alert("🚌 Bus Arriving at School!");
-   }
-
-  });
-
-  // stops ETA
-  STOPS.forEach(stop=>{
-
-   fetch(`https://router.project-osrm.org/route/v1/driving/${lon},${lat};${stop.coords[1]},${stop.coords[0]}?overview=false`)
-   .then(r=>r.json())
-   .then(res=>{
-
-    let eta = res.routes[0].duration/60;
-    let dist = res.routes[0].distance/1000;
-
-    // arrival alert
-    if(dist < 0.2){
-     alert("🛑 Arriving at " + stop.name);
-    }
-
-   });
+   "ETA: " + eta.toFixed(1) + " min";
 
   });
 
