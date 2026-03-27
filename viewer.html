@@ -1,29 +1,62 @@
 <!DOCTYPE html>
-
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Bus Tracker Viewer</title>
+
+<title>Multi Bus Tracker</title>
+
+<link rel="stylesheet"
+href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<style>
+body{margin:0;font-family:Arial}
+#map{height:90vh}
+.topbar{padding:10px;text-align:center;background:#f5f5f5}
+</style>
+
 </head>
 
-<body style="margin:0;font-family:Arial">
+<body>
 
-<h3 style="text-align:center">🚌 Multi Bus Tracker</h3>
+<div class="topbar">
 
-<div style="text-align:center;margin-bottom:10px">
-<select id="busSelect" style="font-size:16px;padding:5px">
+<select id="busSelect">
 <option value="bus1">Bus 1</option>
 <option value="bus2">Bus 2</option>
 <option value="bus3">Bus 3</option>
 </select>
+
+<span id="eta" style="margin-left:20px;font-weight:bold"></span>
+
 </div>
 
-<iframe id="map" width="100%" height="500" style="border:0"></iframe>
+<div id="map"></div>
 
 <script>
 
 const BASE =
 "https://bustracker-5c177-default-rtdb.asia-southeast1.firebasedatabase.app/";
+
+const SCHOOL = [13.0827,80.2707]; // change destination (school)
+
+const map = L.map('map').setView(SCHOOL,13);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+ maxZoom:19
+}).addTo(map);
+
+const busIcon = L.icon({
+ iconUrl:'https://cdn-icons-png.flaticon.com/512/61/61231.png',
+ iconSize:[40,40]
+});
+
+let marker;
+let routeLine;
+
+L.marker(SCHOOL).addTo(map)
+.bindPopup("🏫 Destination");
 
 function update(){
 
@@ -32,18 +65,72 @@ function update(){
  fetch(BASE + bus + ".json")
  .then(r=>r.json())
  .then(d=>{
-   if(!d) return;
 
-   document.getElementById("map").src =
-   "https://maps.google.com/maps?q=" +
-   d.lat + "," + d.lon +
-   "&z=15&output=embed";
+  if(!d) return;
+
+  let lat = d.lat;
+  let lon = d.lon;
+
+  if(!marker){
+   marker = L.marker([lat,lon],{icon:busIcon}).addTo(map);
+  }else{
+   marker.setLatLng([lat,lon]);
+  }
+
+  // draw route line
+  if(routeLine){
+   map.removeLayer(routeLine);
+  }
+
+  routeLine = L.polyline([
+   [lat,lon],
+   SCHOOL
+  ],{
+   color:'green',
+   weight:4
+  }).addTo(map);
+
+  // ETA calculation
+  let dist = distance(lat,lon,SCHOOL[0],SCHOOL[1]);
+  let speed = 30; // km/h average bus speed
+  let eta = (dist/speed)*60;
+
+  document.getElementById("eta").innerHTML =
+  "ETA: " + eta.toFixed(1) + " min";
+
+  // arrival alert
+  if(dist < 0.2){
+   alert("🚌 Bus Arriving!");
+  }
+
  });
 
 }
 
 setInterval(update,3000);
 update();
+
+
+// distance formula (Haversine)
+function distance(lat1, lon1, lat2, lon2){
+
+ let R = 6371;
+
+ let dLat = (lat2-lat1)*Math.PI/180;
+ let dLon = (lon2-lon1)*Math.PI/180;
+
+ let a =
+ Math.sin(dLat/2) * Math.sin(dLat/2) +
+ Math.cos(lat1*Math.PI/180) *
+ Math.cos(lat2*Math.PI/180) *
+ Math.sin(dLon/2) *
+ Math.sin(dLon/2);
+
+ let c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+ return R * c;
+
+}
 
 </script>
 
